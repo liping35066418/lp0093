@@ -100,19 +100,26 @@ app.get('/api/billing', (req: Request, res: Response) => {
   res.json(bills);
 });
 
+app.get('/api/billing/quick', (req: Request, res: Response) => {
+  const petSizeId = req.query.petSizeId as string;
+  const extraServiceIdsStr = req.query.extraServiceIds as string;
+  const extraServiceIds = extraServiceIdsStr ? extraServiceIdsStr.split(',') : [];
+  
+  const result = billingService.quickCalculate(petSizeId, extraServiceIds);
+  res.json(result);
+});
+
+app.get('/api/billing/booking/:bookingId', (req: Request, res: Response) => {
+  const { bookingId } = req.params;
+  const bill = billingService.getBillByBookingId(bookingId);
+  if (!bill) {
+    return res.status(404).json({ error: '账单不存在' });
+  }
+  res.json(bill);
+});
+
 app.get('/api/billing/:id', (req: Request, res: Response) => {
   const { id } = req.params;
-  
-  if (id === 'booking') {
-    const bookingId = req.query.bookingId as string;
-    if (bookingId) {
-      const bill = billingService.getBillByBookingId(bookingId);
-      if (!bill) {
-        return res.status(404).json({ error: '账单不存在' });
-      }
-      return res.json(bill);
-    }
-  }
   
   const bill = billingService.getBill(id);
   if (!bill) {
@@ -127,15 +134,6 @@ app.put('/api/billing/:id/pay', (req: Request, res: Response) => {
     return res.status(404).json({ error: '账单不存在' });
   }
   res.json({ success: true });
-});
-
-app.get('/api/billing/quick', (req: Request, res: Response) => {
-  const petSizeId = req.query.petSizeId as string;
-  const extraServiceIdsStr = req.query.extraServiceIds as string;
-  const extraServiceIds = extraServiceIdsStr ? extraServiceIdsStr.split(',') : [];
-  
-  const result = billingService.quickCalculate(petSizeId, extraServiceIds);
-  res.json(result);
 });
 
 app.get('/api/discounts', (req: Request, res: Response) => {
