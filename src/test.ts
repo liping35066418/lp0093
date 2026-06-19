@@ -146,6 +146,99 @@ async function runTests(): Promise<void> {
   });
   log('');
 
+  log('10. 今日营收看板测试');
+  const revenueBefore = billingService.getDailyRevenue(today);
+  log(`   支付前 - 已收金额: ¥${revenueBefore.totalRevenue.toFixed(2)}`);
+  log(`   支付前 - 已结单数: ${revenueBefore.paidCount}`);
+  log(`   支付前 - 平均客单价: ¥${revenueBefore.avgOrderValue.toFixed(2)}`);
+  logTest('   无已支付账单时已结单数为0', revenueBefore.paidCount === 0, 
+    revenueBefore.paidCount.toString(), '0');
+  logTest('   无已支付账单时平均客单价为0', revenueBefore.avgOrderValue === 0, 
+    revenueBefore.avgOrderValue.toFixed(2), '0.00');
+  
+  const testBill = billingService.createBill(
+    bookingResult.booking?.id || 'test-booking',
+    'medium',
+    ['nail_trim', 'ear_clean']
+  );
+  log(`   创建测试账单: #${testBill.id.substring(0, 8)}，金额: ¥${testBill.totalAmount.toFixed(2)}`);
+  
+  billingService.markBillAsPaid(testBill.id);
+  log('   标记账单为已支付');
+  
+  const revenueAfter = billingService.getDailyRevenue(today);
+  log(`   支付后 - 已收金额: ¥${revenueAfter.totalRevenue.toFixed(2)}`);
+  log(`   支付后 - 已结单数: ${revenueAfter.paidCount}`);
+  log(`   支付后 - 平均客单价: ¥${revenueAfter.avgOrderValue.toFixed(2)}`);
+  
+  logTest('   支付后已结单数为1', revenueAfter.paidCount === 1, 
+    revenueAfter.paidCount.toString(), '1');
+  logTest('   支付后已收金额等于账单金额', revenueAfter.totalRevenue === testBill.totalAmount,
+    `¥${revenueAfter.totalRevenue.toFixed(2)}`, `¥${testBill.totalAmount.toFixed(2)}`);
+  logTest('   平均客单价等于已收金额/已结单数', 
+    Math.abs(revenueAfter.avgOrderValue - revenueAfter.totalRevenue / revenueAfter.paidCount) < 0.01,
+    `¥${revenueAfter.avgOrderValue.toFixed(2)}`, 
+    `¥${(revenueAfter.totalRevenue / revenueAfter.paidCount).toFixed(2)}`);
+  log('');
+
+  log('11. 已取消预约账单不计入营收测试');
+  const cancelledBooking = bookingService.createBooking({
+    stationId: 'A2',
+    petName: '取消测试',
+    petSizeId: 'small',
+    extraServiceIds: [],
+    startTime: '14:00',
+    endTime: '15:00',
+    date: today,
+    customerName: '测试用户',
+    customerPhone: '13000000000',
+  });
+  
+  if (cancelledBooking.booking) {
+    const cancelledBill = billingService.createBill(
+      cancelledBooking.booking.id,
+      'small',
+      []
+    );
+    billingService.markBillAsPaid(cancelledBill.id);
+    log(`   创建已支付账单（对应待取消预约）: ¥${cancelledBill.totalAmount.toFixed(2)}`);
+    
+    const revenueBeforeCancel = billingService.getDailyRevenue(today);
+    log(`   取消预约前 - 已结单数: ${revenueBeforeCancel.paidCount}`);
+    
+    bookingService.updateBookingStatus(cancelledBooking.booking.id, 'cancelled');
+    log('   取消对应预约');
+    
+    const revenueAfterCancel = billingService.getDailyRevenue(today);
+    log(`   取消预约后 - 已结单数: ${revenueAfterCancel.paidCount}`);
+    
+    logTest('   取消预约后已结单数减少', 
+      revenueAfterCancel.paidCount < revenueBeforeCancel.paidCount,
+      `${revenueAfterCancel.paidCount}单`, `${revenueBeforeCancel.paidCount - 1}单`);
+  }
+  log('');
+
+  log('12. 数据一致性测试 - 营收看板与账单列表汇总一致');
+  const bills = billingService.getBillsByDate(today);
+  const paidBillsFromList = bills.filter(bill => {
+    if (bill.status !== 'paid') return false;
+    const booking = bookingService.getBooking(bill.bookingId);
+    return !booking || booking.status !== 'cancelled';
+  });
+  
+  const totalFromList = paidBillsFromList.reduce((sum, b) => sum + b.totalAmount, 0);
+  const revenueFromApi = billingService.getDailyRevenue(today);
+  
+  logTest('   营收金额与账单列表汇总一致', 
+    Math.abs(totalFromList - revenueFromApi.totalRevenue) < 0.01,
+    `看板: ¥${revenueFromApi.totalRevenue.toFixed(2)}, 列表合计: ¥${totalFromList.toFixed(2)}`,
+    '两者相等');
+  logTest('   已结单数与账单列表数一致', 
+    paidBillsFromList.length === revenueFromApi.paidCount,
+    `看板: ${revenueFromApi.paidCount}单, 列表: ${paidBillsFromList.length}单`,
+    '两者相等');
+  log('');
+
   log('========== 测试完成 ==========');
   log('');
 

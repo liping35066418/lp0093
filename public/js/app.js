@@ -17,8 +17,10 @@ function navigateToPage(pageName) {
 
     if (pageName === 'booking') {
         BookingModule.loadBookings();
+        BookingModule.refreshPricePreview();
     } else if (pageName === 'billing') {
-        BillingModule.loadBills();
+        BillingModule.refreshData();
+        BillingModule.refreshQuickCalc();
     } else if (pageName === 'discounts') {
         DiscountModule.loadDiscountRules();
     }

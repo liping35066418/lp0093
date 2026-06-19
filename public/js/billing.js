@@ -13,10 +13,15 @@ const BillingModule = (function() {
             populateQuickPetSizeSelect();
             populateQuickExtraServices();
             setupEventListeners();
-            loadBills();
+            refreshData();
         } catch (error) {
             console.error('Billing init error:', error);
         }
+    }
+
+    function refreshData() {
+        loadBills();
+        loadDailyRevenue();
     }
 
     function populateQuickPetSizeSelect() {
@@ -84,6 +89,17 @@ const BillingModule = (function() {
             renderBills();
         } catch (error) {
             console.error('Load bills error:', error);
+        }
+    }
+
+    async function loadDailyRevenue() {
+        try {
+            const revenue = await API.getDailyRevenue();
+            document.getElementById('today-revenue').textContent = formatCurrency(revenue.totalRevenue);
+            document.getElementById('today-paid-count').textContent = revenue.paidCount;
+            document.getElementById('today-avg-order').textContent = formatCurrency(revenue.avgOrderValue);
+        } catch (error) {
+            console.error('Load daily revenue error:', error);
         }
     }
 
@@ -208,7 +224,7 @@ const BillingModule = (function() {
         try {
             await API.markBillPaid(id);
             showToast('账单已标记为已支付', 'success');
-            loadBills();
+            refreshData();
         } catch (error) {
             showToast('操作失败', 'error');
         }
@@ -219,11 +235,20 @@ const BillingModule = (function() {
         hideModal();
     }
 
+    function refreshQuickCalc() {
+        const petSizeId = document.getElementById('quick-pet-size').value;
+        if (petSizeId) {
+            updateQuickResult();
+        }
+    }
+
     return {
         init,
         loadBills,
         viewBill,
         markPaid,
         markPaidAndCloseModal,
+        refreshData,
+        refreshQuickCalc,
     };
 })();

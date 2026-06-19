@@ -63,6 +63,8 @@ const API = {
         }),
     quickCalculate: (petSizeId, extraServiceIds) => 
         apiRequest(`/billing/quick?petSizeId=${petSizeId}&extraServiceIds=${extraServiceIds.join(',')}`),
+    getDailyRevenue: (date) => 
+        apiRequest(`/billing/daily-revenue${date ? `?date=${date}` : ''}`),
     
     getDiscountRules: () => apiRequest('/discounts'),
     getEnabledDiscountRules: () => apiRequest('/discounts/enabled'),

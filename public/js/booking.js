@@ -127,6 +127,13 @@ const BookingModule = (function() {
         }
     }
 
+    function refreshPricePreview() {
+        const petSizeId = document.getElementById('pet-size').value;
+        if (petSizeId) {
+            updatePricePreview();
+        }
+    }
+
     async function handleSubmit(e) {
         e.preventDefault();
 
@@ -284,5 +291,6 @@ const BookingModule = (function() {
         loadBookings,
         completeBooking,
         cancelBooking,
+        refreshPricePreview,
     };
 })();

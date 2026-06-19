@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Bill, BillItem, DiscountApplied } from '../../types';
 import { dataStore } from './dataStore';
 import { petSizes, extraServices } from '../../data/initialData';
+import { formatDate } from './timeUtils';
 
 export interface CalculateBillRequest {
   bookingId: string;
@@ -137,6 +138,42 @@ export class BillingService {
       extraServiceIds,
     });
     return result.totalAmount;
+  }
+
+  getBillsByDate(date: string): Bill[] {
+    const allBills = dataStore.getAllBills();
+    return allBills.filter(bill => {
+      const billDate = formatDate(new Date(bill.createdAt));
+      return billDate === date;
+    });
+  }
+
+  getDailyRevenue(date: string): {
+    totalRevenue: number;
+    paidCount: number;
+    avgOrderValue: number;
+  } {
+    const bills = this.getBillsByDate(date);
+    let totalRevenue = 0;
+    let paidCount = 0;
+
+    for (const bill of bills) {
+      if (bill.status !== 'paid') continue;
+
+      const booking = dataStore.getBooking(bill.bookingId);
+      if (booking && booking.status === 'cancelled') continue;
+
+      totalRevenue += bill.totalAmount;
+      paidCount++;
+    }
+
+    const avgOrderValue = paidCount > 0 ? totalRevenue / paidCount : 0;
+
+    return {
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      paidCount,
+      avgOrderValue: Math.round(avgOrderValue * 100) / 100,
+    };
   }
 }
 

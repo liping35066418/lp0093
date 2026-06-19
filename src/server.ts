@@ -96,8 +96,21 @@ app.post('/api/billing/booking/:bookingId', (req: Request, res: Response) => {
 });
 
 app.get('/api/billing', (req: Request, res: Response) => {
-  const bills = billingService.getAllBills();
+  const date = (req.query.date as string) || formatDate(new Date());
+  const allBills = billingService.getBillsByDate(date);
+  
+  const bills = allBills.filter(bill => {
+    const booking = bookingService.getBooking(bill.bookingId);
+    return !booking || booking.status !== 'cancelled';
+  });
+  
   res.json(bills);
+});
+
+app.get('/api/billing/daily-revenue', (req: Request, res: Response) => {
+  const date = (req.query.date as string) || formatDate(new Date());
+  const revenue = billingService.getDailyRevenue(date);
+  res.json(revenue);
 });
 
 app.get('/api/billing/quick', (req: Request, res: Response) => {
